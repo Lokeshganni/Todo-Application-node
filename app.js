@@ -40,9 +40,27 @@ const validateQueryParams = (query, validValues, errorMessage) => {
   return null;
 };
 
+const toCamelCase = (obj) => {
+  const newObj = {};
+  for (const key in obj) {
+    const camelCaseKey = key.replace(/_([a-z])/g, (g) => g[1].toUpperCase());
+    newObj[camelCaseKey] = obj[key];
+  }
+  return newObj;
+};
+
+const convertArrayToCamelCase = (array) => {
+  return array.map((item) => toCamelCase(item));
+};
+
 // API 1
 app.get("/todos/", async (req, res) => {
-  const { status, priority, search_q, category } = req.query;
+  const {
+    status = "",
+    priority = "",
+    search_q = "",
+    category = "",
+  } = req.query;
 
   let error =
     validateQueryParams(status, validStatuses, "Invalid Todo Status") ||
@@ -64,7 +82,7 @@ app.get("/todos/", async (req, res) => {
         category LIKE '%${category}%';`;
 
   const dbRes = await db.all(getQuery);
-  res.send(dbRes);
+  res.send(convertArrayToCamelCase(dbRes));
 });
 
 // API 2
@@ -75,7 +93,7 @@ app.get("/todos/:todoId/", async (req, res) => {
     WHERE id=${todoId};`;
 
   const dbRes = await db.get(getQuery);
-  res.send(dbRes);
+  res.send(toCamelCase(dbRes));
 });
 
 // API 3
@@ -94,7 +112,8 @@ app.get("/agenda/", async (req, res) => {
     WHERE due_date = '${formattedDate}';`;
 
   const dbRes = await db.all(getQuery);
-  res.send(dbRes);
+  console.log(dbRes);
+  res.send(convertArrayToCamelCase(dbRes));
 });
 
 // API 4
@@ -183,3 +202,146 @@ app.delete("/todos/:todoId/", async (req, res) => {
 
 module.exports = app;
 
+// const express = require("express");
+// const { open } = require("sqlite");
+// const sqlite3 = require("sqlite3");
+// const path = require("path");
+// const bcrypt = require("bcrypt");
+// const jwt = require("jsonwebtoken");
+// const format = require("date-fns/format");
+// const isValid = require("date-fns/isValid");
+
+// const app = express();
+// app.use(express.json());
+
+// const dbPath = path.join(__dirname, "todoApplication.db");
+
+// let db;
+
+// const intialiseDbAndServer = async () => {
+//   try {
+//     db = await open({
+//       filename: dbPath,
+//       driver: sqlite3.Database,
+//     });
+//     app.listen(3000, () => {
+//       console.log("Server Running at PORT 3000");
+//     });
+//   } catch (e) {
+//     console.log(`DB Error: ${e.message}`);
+//     process.exit(1);
+//   }
+// };
+
+// intialiseDbAndServer();
+
+// const validStatuses = ["TO DO", "IN PROGRESS", "DONE"];
+// const validPriorities = ["HIGH", "MEDIUM", "LOW"];
+// const validCategories = ["WORK", "HOME", "LEARNING"];
+
+// const validateQueryParams = (query, validValues, errorMessage) => {
+//   if (query && !validValues.includes(query)) {
+//     return errorMessage;
+//   }
+//   return null;
+// };
+
+// //api 1
+// app.get("/todos/", async (req, res) => {
+//   const {
+//     status = "",
+//     priority = "",
+//     search_q = "",
+//     category = "",
+//   } = req.query;
+//   const getQuery = `
+//     SELECT *
+//     FROM todo
+//     WHERE
+//         status LIKE '%${status}%' AND
+//         priority LIKE '%${priority}%' AND
+//         todo LIKE '%${search_q}%' AND
+//         category LIKE '%${category}%';`;
+
+//   const dbRes = await db.all(getQuery);
+//   res.send(dbRes);
+// });
+
+// //api 2
+// app.get("/todos/:todoId/", async (req, res) => {
+//   const { todoId } = req.params;
+//   const getQuery = `
+//     SELECT * FROM todo
+//     WHERE id=${todoId};`;
+
+//   const dbRes = await db.get(getQuery);
+//   res.send(dbRes);
+// });
+
+// //api 3
+// app.get("/agenda/", async (req, res) => {
+//   const { date } = req.query;
+//   const formattedDate = format(new Date(date), "yyyy-MM-dd");
+//   formattedDate.toString();
+//   console.log(formattedDate, "lokesh");
+//   const getQuery = `
+//     SELECT * FROM todo
+//     WHERE due_date = ${formattedDate};`;
+
+//   const dbRes = await db.all(getQuery);
+//   res.send(dbRes);
+// });
+
+// //api 4
+// app.post("/todos/", async (req, res) => {
+//   const { id, todo, priority, status, category, dueDate } = req.body;
+//   const postQuery = `
+//     INSERT INTO todo(id,todo,priority,status,category,due_date)
+//     VALUES (${id},'${todo}','${priority}','${status}','${category}','${dueDate}');`;
+
+//   await db.run(postQuery);
+//   res.send("Todo Successfully Added");
+// });
+
+// //api 5
+
+// let fieldObj = {
+//   status: "status",
+//   priority: "priority",
+//   todo: "todo",
+//   category: "category",
+//   dueDate: "due_date",
+// };
+
+// let upperObj = {
+//   status: "Status",
+//   priority: "Priority",
+//   todo: "Todo",
+//   category: "Category",
+//   dueDate: "Due Date",
+// };
+
+// app.put("/todos/:todoId/", async (req, res) => {
+//   const { todoId } = req.params;
+//   const reqObj = req.body;
+//   const obj = Object.keys(reqObj)[0];
+//   const putQuery = `
+//     UPDATE todo
+//     SET ${fieldObj[obj]} = '${reqObj[obj]}'
+//     WHERE id=${todoId};`;
+//   await db.run(putQuery);
+//   res.send(`${upperObj[obj]} Updated`);
+// });
+
+// //api 6
+// app.delete("/todos/:todoId/", async (req, res) => {
+//   const { todoId } = req.params;
+//   const deleteQuery = `
+//     DELETE FROM todo
+//     WHERE id=${todoId};`;
+
+//   await db.run(deleteQuery);
+//   res.send("Todo Deleted");
+// });
+
+// module.exports = app;
